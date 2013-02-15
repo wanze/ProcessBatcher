@@ -1,0 +1,397 @@
+<?php
+
+/**
+* Batcher Module v 1.0
+* Batch Editing of pages in the ProcessWire Admin Panel
+*
+* @author Stefan Wanzenried (Wanze)
+* @copyright Stefan Wanzenried
+* <http://www.everchanging.ch>
+*
+* ProcessWire 2.x
+* Copyright (C) 2011 by Ryan Cramer
+* Licensed under GNU/GPL v2, see LICENSE.TXT
+*
+* http://www.processwire.com
+* http://www.ryancramer.com
+*
+*/
+
+class ProcessBatcher extends Process implements Module {
+	
+	const PAGE_NAME = 'batcher';
+	
+	protected $messages = array();
+	protected $errors = array();
+	protected $actions = array();	
+		
+	/**
+	 * Constructor
+	 * 
+	 * @access public
+	 * @return void
+	 */
+	public function __construct() {
+
+		$this->actions = array(
+			'publish' => $this->_('Publish'),
+			'unpublish' => $this->_('Unpublish'),
+			'hide' => $this->_('Hide'),
+			'unhide' => $this->_('Unhide'),
+			'lock' => $this->_('Lock'),
+			'unlock' => $this->_('Unlock'),
+			'trash' => $this->_('Trash'),
+	//		'restore' => $this->_('Restore'),
+			'delete' => $this->_('Delete'),
+			'changeTemplate' => $this->_('Change Template'),
+			'changeParent' => $this->_('Change Parent'),
+		);
+
+	}
+
+
+	public static function getModuleInfo() {
+
+		return array(
+			'title' => __('Batcher', __FILE__),
+			'summary' => __('Batch Editing of Pages', __FILE__),
+			'version' => 100,
+			'href' => '',
+			'permanent' => false,
+		);
+
+	}
+
+
+	public function init() {
+		return parent::init();
+	}
+
+
+	public function ___install() {
+
+		parent::___install();	
+		$page = $this->pages->get('template=admin, name='.self::PAGE_NAME);
+		if (!$page->id) {
+			$page = new Page();
+			$page->template = 'admin';
+			$page->parent = $this->pages->get($this->config->adminRootPageID)->child('name=setup');
+			$page->title = 'Batcher';
+			$page->name = self::PAGE_NAME;
+			$page->process = $this;
+			$page->save();
+		}
+
+	}
+
+	
+	public function ___uninstall() {
+		
+		parent::___uninstall();
+		$page = $this->pages->get('template=admin, name='.self::PAGE_NAME);
+		if ($page->id) $page->delete();	
+		
+	}	
+	
+	
+	/**
+	 * Build the search form
+	 * 
+	 * @access protected
+	 * @param mixed $form Instance of InputfieldForm
+	 * @return void
+	 */
+	protected function buildSearchForm($form) {
+
+		$field = $this->modules->get('InputfieldText');
+		$field->label = $this->_('Search');
+		$field->description = $this->_('Enter a selector to search your pages.');
+		$field->notes = $this->_('If you want to search for hidden/unpublished pages, add "include=hidden" or "include=all" to your selector');
+		$field->attr('name', 'selector');
+		if ($this->input->post->selector) {
+			$field->attr('value', $this->input->post->selector); //Pw takes care of entity encoding 
+		}
+		$button = $this->modules->get('InputfieldSubmit');
+		$button->attr('value', $this->_('Search'));
+		$button->attr('name', 'a');
+		$form->append($field);
+		$form->append($button);
+		
+	}
+
+	
+	/**
+	 * Build the Form displaying the table with pages and the actions to execute
+	 * 
+	 * @access protected
+	 * @param mixed $form Instance of InputfieldForm
+	 * @return void
+	 */
+	protected function buildActionsForm($form) {
+
+		$selector = $this->input->post->selector;
+		$pages = $this->pages->find($selector); //Pw will throw an exception here if the selector is not valid
+		if (!count($pages)) {
+			$this->message($this->_('No pages found with your selector'));
+			return;
+		}
+
+		$results = $this->modules->get('InputfieldMarkup');
+		$results->label = $this->_('Pages');
+		$table = $this->modules->get('MarkupAdminDataTable');
+		$table->setEncodeEntities(false);
+		$table->setClass('batcher_pages');
+		$table->setSortable(false);
+		$header = array(
+			'<input type="checkbox" class="toggle_all" checked="checked">',
+			$this->_('Id'),
+			$this->_('Title'),
+			$this->_('Name'),
+			$this->_('Template'),
+			$this->_('Parent'),
+			$this->_('Status'),
+		);
+		$table->headerRow($header);
+
+		//Throw the different statuses in an array to make them translatable
+		//Statuses... does this even exist as plural of status in English?? argh :-)
+		$statuses = array(
+			'hidden' => $this->_('Hidden'),
+			'unpublished' => $this->_('Unpublished'),
+			'locked' => $this->_('Locked'),
+			'trashed' => $this->_('Trashed'),
+		);
+		
+		//Build the table
+		foreach ($pages as $p) {
+			$status = '';
+			if ($p->is(Page::statusHidden)) $status .= $statuses['hidden'] . ', ';
+			if ($p->is(Page::statusUnpublished)) $status .= $statuses['unpublished'] . ', ';
+			if ($p->is(Page::statusLocked)) $status .= $statuses['locked'] . ', ';
+			if ($p->is(Page::statusTrash)) $status .= $statuses['trashed'] . ', ';
+			$status = rtrim($status, ' ,');
+
+			//We provide the same pages checked if for some reason an error occurred before
+			$checked = " checked='checked'";
+			if (count($this->input->post->pages) && $this->input->post->a == $this->_('Execute')) {
+				if (!in_array($p->id, $this->input->post->pages)) $checked = '';
+			}
+
+			$row = array(
+				"<input type='checkbox' name='pages[]' value='{$p->id}' class='toggle'{$checked}>",
+				$p->id,
+				$p->title,
+				$p->name,
+				$p->template,
+				$p->parent->path,
+				$status,
+			);
+			$table->row($row);
+		}	
+
+		$results->attr('value', $table->render());
+		$form->append($results);
+		$actions = $this->modules->get('InputfieldMarkup');
+		$actions->label = $this->_('Actions');
+		$actions->collapsed = 1;
+		$actions->description = $this->_('Choose the Action to be executed on the selected pages.');
+		$action = $this->modules->get('InputfieldSelect');
+		$action->label = $this->_('Action');
+		$action->attr('name+id', 'batcherAction');
+		$action->addOptions($this->actions);
+		$actions->append($action);
+		
+		//Need additional Inputfields for some Actions (change Parent, change Template)
+		$changeParent = $this->modules->get('InputfieldPageListSelect');
+		$changeParent->label = $this->_('Choose new Parent');
+		$changeParent->attr('name+id', 'changeParent');
+		$changeParent->attr('class', 'batcherAction');
+		$changeParent->notes = $this->_("The template of the new parent must accept the page's templates as children.");
+		$actions->append($changeParent);
+		
+		$changeTemplate = $this->modules->get('InputfieldSelect');		
+		$templates = array(); //Build templates array - exclude System templates
+		foreach ($this->templates as $template) {
+			if($template->flags & Template::flagSystem) continue;
+			$label = $template->label ? $template->label : $template->name;
+			$templates[$template->name] = $label;
+		}
+		$changeTemplate->addOptions($templates);
+		$changeTemplate->label = $this->_('Choose new Template');
+		$changeTemplate->notes = $this->_('Attention: Data in fields which are not assigned to the new template will be lost!');
+		$changeTemplate->attr('name+id', 'changeTemplate');
+		$changeTemplate->attr('class', 'batcherAction');
+		$actions->append($changeTemplate);
+		
+		$button = $this->modules->get('InputfieldSubmit');
+		$button->attr('value', $this->_('Execute'));
+		$button->attr('name', 'a');
+		$actions->append($button);
+		$form->append($actions);
+		
+	}
+	
+	
+	/**
+	 * Execute Batcher
+	 * 
+	 * @access public
+	 * @return void
+	 */
+	public function ___execute() {
+		
+		$form = $this->modules->get('InputfieldForm');
+		$this->buildSearchForm($form);
+				
+		if ($this->input->post->a == $this->_('Search')) {
+			//User was searching for pages
+			$this->buildActionsForm($form);
+		} else if ($this->input->post->a == $this->_('Execute')) {
+			//User has chosen an action to execute, do some error checking here
+			if (!in_array($this->input->post->batcherAction, array_keys($this->actions))) {
+				$this->buildActionsForm($form);
+				$this->error($this->_('You must choose a valid action'));
+			} else if (!count($this->input->post->pages)) {
+				$this->buildActionsForm($form);
+				$this->error($this->_('No pages selected'));
+			} else {
+				//changeParent and changeTemplate need new parent/template
+				$errors = false;
+				if ($this->input->post->batcherAction == 'changeParent' && !$this->input->post->changeParent) {
+					$this->error('You must select a new parent');
+					$errors = true;
+				}
+				if ($this->input->post->batcherAction == 'changeTemplate' && !$this->input->post->changeTemplate) {
+					$this->error('You must select a new template');
+					$errors = true;
+				}
+				if ($errors) {
+					$this->buildActionsForm($form);					
+				} else {
+					//Execute action and redirect
+					$this->executeAction();
+				}				
+			}
+		}
+		
+		return $form->render();
+						
+	}
+	
+	
+	/**
+	 * Execute an Action for the selected pages 
+	 *
+	 * @access protected
+	 * @return void
+	 */
+	protected function executeAction() {
+		
+		$action = $this->input->post->batcherAction;
+		$pageIds = implode('|', $this->input->post->pages); 
+		$pages = $this->pages->find("id={$pageIds}, include=all");
+		$count = 0;
+		
+		switch ($action) {
+			case 'publish' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->removeStatus(Page::statusUnpublished);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Published %d pages", $count));
+			break;
+			case 'unpublish' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->addStatus(Page::statusUnpublished);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Unpublished %d pages", $count));
+			break;
+			case 'hide' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->addStatus(Page::statusHidden);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Added status hidden to %d pages", $count));
+			break;
+			case 'unhide' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->removeStatus(Page::statusHidden);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Removed status hidden from %d pages", $count));
+			break;
+			case 'lock' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->addStatus(Page::statusLocked);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Locked %d pages", $count));			
+			break;
+			case 'unlock' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->removeStatus(Page::statusLocked);
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Unlocked %d pages", $count));
+			break;
+			case 'trash' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->trash();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Moved %d pages to the trash", $count));
+			break;
+			case 'delete' :
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->delete();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Deleted %d pages", $count));
+			break;
+			case 'changeTemplate' :
+				$template = $this->input->post->changeTemplate;
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->template = $template;
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Changed template of %d pages", $count));
+			break;
+			case 'changeParent' :
+				$parent = $this->input->post->changeParent;
+				foreach ($pages as $p) {
+					$p->of(false);
+					$p->parent = $parent;
+					$p->save();
+					$count++;
+				}
+				$this->messages[] = $this->_(sprintf("Changed parent of %d pages", $count));
+			break;
+		}
+		
+		//Finished executing the action(s). We do a redirect and display messages / errors with session
+		foreach ($this->errors as $error) $this->session->error($error);
+		foreach ($this->messages as $message) $this->session->message($message);
+		$this->session->redirect('./');
+
+	}
+	
+}
+
+?>

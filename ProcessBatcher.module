@@ -56,7 +56,7 @@ class ProcessBatcher extends Process implements Module {
 			'title' => __('Batcher', __FILE__),
 			'summary' => __('Batch Editing of Pages', __FILE__),
 			'version' => 100,
-			'href' => '',
+			'href' => 'http://processwire.com/talk/topic/2811-processbatcher/',
 			'permanent' => false,
 		);
 

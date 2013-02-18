@@ -14,4 +14,7 @@ $(document).ready(function(){
 		}
 	});
 	
+	//Don't enable sorting on first column - checkboxes
+	$.tablesorter.defaults.headers = {0:{sorter:false}};
+	
 });

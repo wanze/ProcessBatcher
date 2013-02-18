@@ -1,7 +1,7 @@
 <?php
 
 /**
-* Batcher Module v 1.0
+* Batcher Module v 1.0.1
 * Batch Editing of pages in the ProcessWire Admin Panel
 *
 * @author Stefan Wanzenried (Wanze)
@@ -55,7 +55,7 @@ class ProcessBatcher extends Process implements Module {
 		return array(
 			'title' => __('Batcher', __FILE__),
 			'summary' => __('Batch Editing of Pages', __FILE__),
-			'version' => 100,
+			'version' => 101,
 			'href' => 'http://processwire.com/talk/topic/2811-processbatcher/',
 			'permanent' => false,
 		);
@@ -106,15 +106,28 @@ class ProcessBatcher extends Process implements Module {
 		$field = $this->modules->get('InputfieldText');
 		$field->label = $this->_('Search');
 		$field->description = $this->_('Enter a selector to search your pages.');
-		$field->notes = $this->_('If you want to search for hidden/unpublished pages, add "include=hidden" or "include=all" to your selector');
+		$field->columnWidth = 75;
 		$field->attr('name', 'selector');
 		if ($this->input->post->selector) {
 			$field->attr('value', $this->input->post->selector); //Pw takes care of entity encoding 
+		}
+		$filters = $this->modules->get('InputfieldCheckboxes');
+		$filters->label = $this->_('Filters');
+		$filters->columnWidth = 25;
+		$filters->attr('name', 'filters');
+		$filters->addOption('hidden', $this->_('Include hidden'));
+		$filters->addOption('all', $this->_('Include all'));
+		if ($this->input->post->filters) {
+			$value = array();
+			if (in_array('hidden', $this->input->post->filters)) $value[] = 'hidden';
+			if (in_array('all', $this->input->post->filters)) $value[] = 'all';
+			$filters->attr('value', $value);
 		}
 		$button = $this->modules->get('InputfieldSubmit');
 		$button->attr('value', $this->_('Search'));
 		$button->attr('name', 'a');
 		$form->append($field);
+		$form->append($filters);
 		$form->append($button);
 		
 	}
@@ -130,18 +143,24 @@ class ProcessBatcher extends Process implements Module {
 	protected function buildActionsForm($form) {
 
 		$selector = $this->input->post->selector;
+		if ($this->input->post->filters) {
+			if (in_array('hidden', $this->input->post->filters)) $selector .= ",include=hidden";
+			if (in_array('all', $this->input->post->filters)) $selector .= ",include=all";
+		}
+
 		$pages = $this->pages->find($selector); //Pw will throw an exception here if the selector is not valid
 		if (!count($pages)) {
 			$this->message($this->_('No pages found with your selector'));
 			return;
 		}
-
+		
+		$count = count($pages);
+		$this->message($this->_(sprintf('Found %d pages', $count)));
 		$results = $this->modules->get('InputfieldMarkup');
 		$results->label = $this->_('Pages');
 		$table = $this->modules->get('MarkupAdminDataTable');
 		$table->setEncodeEntities(false);
 		$table->setClass('batcher_pages');
-		$table->setSortable(false);
 		$header = array(
 			'<input type="checkbox" class="toggle_all" checked="checked">',
 			$this->_('Id'),
@@ -149,27 +168,22 @@ class ProcessBatcher extends Process implements Module {
 			$this->_('Name'),
 			$this->_('Template'),
 			$this->_('Parent'),
-			$this->_('Status'),
+			$this->_('Published'),
+			$this->_('Hidden'),
+			$this->_('Locked'),
+			$this->_('Trashed'),
 		);
 		$table->headerRow($header);
-
-		//Throw the different statuses in an array to make them translatable
-		//Statuses... does this even exist as plural of status in English?? argh :-)
-		$statuses = array(
-			'hidden' => $this->_('Hidden'),
-			'unpublished' => $this->_('Unpublished'),
-			'locked' => $this->_('Locked'),
-			'trashed' => $this->_('Trashed'),
-		);
+				
+		$yes = $this->_('Yes');
+		$no  = $this->_('No');
 		
 		//Build the table
 		foreach ($pages as $p) {
-			$status = '';
-			if ($p->is(Page::statusHidden)) $status .= $statuses['hidden'] . ', ';
-			if ($p->is(Page::statusUnpublished)) $status .= $statuses['unpublished'] . ', ';
-			if ($p->is(Page::statusLocked)) $status .= $statuses['locked'] . ', ';
-			if ($p->is(Page::statusTrash)) $status .= $statuses['trashed'] . ', ';
-			$status = rtrim($status, ' ,');
+			$published = ($p->is(Page::statusUnpublished)) ? "<span class='red'>{$no}</span>" : $yes;
+			$hidden = ($p->is(Page::statusHidden)) ? "<span class='red'>{$yes}</span>" : $no;
+			$locked = ($p->is(Page::statusLocked)) ? "<span class='red'>{$yes}</span>" : $no;
+			$trashed = ($p->is(Page::statusTrash)) ? "<span class='red'>{$yes}</span>" : $no;
 
 			//We provide the same pages checked if for some reason an error occurred before
 			$checked = " checked='checked'";
@@ -184,7 +198,10 @@ class ProcessBatcher extends Process implements Module {
 				$p->name,
 				$p->template,
 				$p->parent->path,
-				$status,
+				$published,
+				$hidden,
+				$locked,
+				$trashed,
 			);
 			$table->row($row);
 		}	

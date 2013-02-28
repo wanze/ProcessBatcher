@@ -15,4 +15,20 @@ table.batcher_pages tr th {
 	padding-right: 5px;
 }
 
-.red  { color: red; }
+table.batcher_create tr td {
+	padding-right: 15px;
+	vertical-align: middle;
+}
+
+table.batcher_create tr td:last-child {
+	text-align: right;
+}
+
+.batcher_small {
+	font-size: 10px;
+}
+
+.red  { 
+	color: red; 
+}
+

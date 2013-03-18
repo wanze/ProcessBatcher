@@ -90,12 +90,19 @@ $(document).ready(function(){
 	/**
 	 * Remove a tr
 	 */
-	$(document).on('click', '.remove_page', function(){
-		var $tr = $(this).closest('tr');
+	 var removeTr = function() {
+	 	var $tr = $(this).closest('tr');
 		if ($tr.prev('tr').find('input').length) $tr.remove();
-		return false;
-	});
-	
+		return false;	 	 				 
+	 };
+
+	if ($.isFunction($(document).on)) {
+	    $(document).on('click', '.remove_page', removeTr);
+	} else {
+	    $('.remove_page').live('click', removeTr);
+	} 	
+
+		
 	/**
 	 * Modify checkboxes which are not checked to hidden fields, sending the value "0"
 	 */

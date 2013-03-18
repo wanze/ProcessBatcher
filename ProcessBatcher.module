@@ -1,7 +1,7 @@
 <?php
 
 /**
-* Batcher Module v 1.0.2
+* Batcher Module v 1.0.3
 * Batch Editing and Creating of Pages in the ProcessWire Admin Panel
 *
 * @author Stefan Wanzenried (Wanze)
@@ -51,15 +51,21 @@ class ProcessBatcher extends Process implements Module {
 
 
 	public static function getModuleInfo() {
-
+		
+		//User role needs 'batcher' permission, but this was added with v 1.0.3. 
+		//Use 'page-edit' if the user updated batcher without creating the new permission manually.
+		$permission = 'batcher';
+		$p = wire('permissions')->get('batcher');
+		if (!$p->id) $permission = 'page-edit';
+		
 		return array(
 			'title' => __('Batcher', __FILE__),
 			'summary' => __('Batch Editing and Creating of Pages', __FILE__),
 			'author' => 'Wanze',
-			'version' => 102,
+			'version' => 103,
 			'href' => 'http://processwire.com/talk/topic/2811-processbatcher/',
 			'permanent' => false,
-			'permission' => 'page-edit',
+			'permission' => $permission,
 		);
 
 	}
@@ -88,6 +94,14 @@ class ProcessBatcher extends Process implements Module {
 			$page->process = $this;
 			$page->save();
 		}
+		
+		$permission = $this->permissions->get('batcher');
+		if (!$permission->id) {
+			$p = new Permission();
+			$p->name = 'batcher';
+			$p->title = $this->_('View Batcher Page');
+			$p->save();			
+		}		
 
 	}
 
@@ -97,6 +111,9 @@ class ProcessBatcher extends Process implements Module {
 		parent::___uninstall();
 		$page = $this->pages->get('template=admin, name='.self::PAGE_NAME);
 		if ($page->id) $page->delete();	
+
+		$permission = $this->permissions->get('batcher');
+		if ($permission->id) $permission->delete();		
 		
 	}	
 	

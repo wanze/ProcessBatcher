@@ -16,11 +16,11 @@ $(document).ready(function(){
 
 	//Submit the right button when we are on the edit screen
 	$(document).keypress(function(e){
-		edit = $('.WireTabs li:first a').hasClass('on');
-		if (e.which == 13 && edit) {
+		var edit = $('.WireTabs li:first a').hasClass('on');
+        if (e.which == 13 && edit) {
 			$('#batcher_search').trigger('click');
 		}
-	})
+	});
 
 	/* EDIT
 	 ***********************************************************************/

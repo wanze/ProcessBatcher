@@ -666,7 +666,7 @@ class ProcessBatcher extends Process implements Module
             case 'deleteWithChildren' :
                 foreach ($pages as $p) { 
                     // add the number of child pages to the count                   
-                    $count = $p->numChildren();
+                    $count += $p->numChildren();
                     $p->of(false);
                     wire('pages')->delete($p, true); 
                     // add the page itself to the count

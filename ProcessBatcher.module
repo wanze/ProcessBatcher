@@ -37,7 +37,7 @@ class ProcessBatcher extends Process implements Module
             'unlock' => $this->_('Unlock'),
             'trash' => $this->_('Trash'),
             'delete' => $this->_('Delete'),
-            'delete_with_children' => $this->_('Delete (include child pages)'),
+            'deleteWithChildren' => $this->_('Delete (include child pages)'),
             'changeTemplate' => $this->_('Change Template'),
             'changeParent' => $this->_('Change Parent'),
         );
@@ -235,7 +235,7 @@ class ProcessBatcher extends Process implements Module
     {
         $actions = $this->actions;
         if (!$this->user->hasPermission('page-delete')) unset($actions['delete']);
-        if (!$this->user->hasPermission('page-delete')) unset($actions['delete_with_children']);
+        if (!$this->user->hasPermission('page-delete')) unset($actions['deleteWithChildren']);
         if (!$this->user->hasPermission('page-move')) unset($actions['changeParent']);
         if (!$this->user->hasPermission('page-template')) unset($actions['changeTemplate']);
         if (!$this->user->hasPermission('page-lock')) {
@@ -663,13 +663,14 @@ class ProcessBatcher extends Process implements Module
                 }
                 $message = $this->_(sprintf("Deleted %d pages", $count));
                 break;
-            case 'delete_with_children' :
-                foreach ($pages as $p) {
-                    $children = wire('pages')->find('has_parent=' . $pages->get($p));
-                    $count = $count + $children->count();
+            case 'deleteWithChildren' :
+                foreach ($pages as $p) { 
+                    // add the number of child pages to the count                   
+                    $count = $p->numChildren();
                     $p->of(false);
-                    wire('pages')->delete($pages->get($p), true); 
-                    $count++;                              
+                    wire('pages')->delete($p, true); 
+                    // add the page itself to the count
+                    $count++;                        
                 }
                 $message = $this->_(sprintf("Deleted %d pages", $count));
                 break;

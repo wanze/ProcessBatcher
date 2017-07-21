@@ -167,7 +167,7 @@ class ProcessBatcher extends Process implements Module
             $row = array(
                 "<input type='checkbox' name='pages[]' value='{$p->id}' class='toggle'{$checked}>",
                 $p->id,
-                "{$p->title} <a href='{$this->config->urls->admin}page/edit/?id={$p->id}&modal=1' class='batcher_small pw-modal pw-modal-large'>" . $this->_('edit') . "</a>",
+                "{$p->title} <a href='{$this->config->urls->admin}page/edit/?id={$p->id}&modal=1' class='batcher_small pw-modal pw-modal-large' data-buttons='#submit_save, #submit_publish, #submit_save_unpublished' data-autoclose>" . $this->_('edit') . "</a>",
                 $p->name,
                 $p->template,
                 $p->parent->path,

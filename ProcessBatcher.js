@@ -17,7 +17,7 @@ $(document).ready(function(){
 	//Submit the right button when we are on the edit screen
 	$(document).keypress(function(e){
 		var edit = $('.WireTabs li:first a').hasClass('on');
-        if (e.which == 13 && edit) {
+        if (e.which === 13 && edit) {
 			$('#batcher_search').trigger('click');
 		}
 	});
@@ -37,7 +37,7 @@ $(document).ready(function(){
 	/**
 	 * Toggle all checkbox in th
 	 */
-	$('input.toggle_all').click(function(){
+	$(document).on('change', 'input.toggle_all', function() {
 		if ($(this).prop('checked')) {
 			$('.toggle').prop('checked', true);
 		} else {
@@ -46,21 +46,9 @@ $(document).ready(function(){
 	});
 	
 	/**
-	 * Setup fancybox for page edits
-	 */
-	var h = $(window).height()-65;
-    var w = $(window).width() > 1150 ? 1150 : $(window).width()-100;
-	
-	$('.batcher_edit').fancybox({
-		type : 'iframe',
-		frameWidth : w,
-		frameHeight : h
-	});
-	
-	/**
 	 * Fix for MarkupAdminDataTable: Don't enable sorting on first column
 	 */
-	if ($.tablesorter != undefined) $.tablesorter.defaults.headers = {0:{sorter:false}};
+	if ($.tablesorter !== undefined) $.tablesorter.defaults.headers = {0:{sorter:false}};
 	
 
 	/* CREATE
@@ -82,10 +70,9 @@ $(document).ready(function(){
 		$('table.batcher_create').append($clone);
 		$clone.find('input:first').focus();
 		return false;
-	}
-	
+	};
 	$('.batcher_add').click(clonePageRow);
-	$(document).bind('keydown', 'ctrl+n', clonePageRow);
+	$(document).bind('keydown', 'alt+n', clonePageRow);
 	
 	/**
 	 * Remove a tr
@@ -95,13 +82,7 @@ $(document).ready(function(){
 		if ($tr.prev('tr').find('input').length) $tr.remove();
 		return false;	 	 				 
 	 };
-
-	if ($.isFunction($(document).on)) {
-	    $(document).on('click', '.remove_page', removeTr);
-	} else {
-	    $('.remove_page').live('click', removeTr);
-	} 	
-
+	$(document).on('click', '.remove_page', removeTr);
 		
 	/**
 	 * Modify checkboxes which are not checked to hidden fields, sending the value "0"

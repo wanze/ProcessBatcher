@@ -32,3 +32,5 @@ table.batcher_create tr td:last-child {
 	color: red; 
 }
 
+/* Remove AdminOnSteroids elements due to layout glitches */
+#batcher_form .dtFilter, #batcher_form .case-toggle { display:none; }

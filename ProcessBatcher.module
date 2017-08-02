@@ -68,7 +68,7 @@ class ProcessBatcher extends Process implements Module
     public function init()
     {
         parent::init();
-	    $this->modules->get('JqueryUI')->use('modal');
+        $this->modules->get('JqueryUI')->use('modal');
         $this->modules->get('JqueryWireTabs');
         $this->config->scripts->add($this->config->urls->ProcessBatcher . 'jquery.hotkeys.js');
     }

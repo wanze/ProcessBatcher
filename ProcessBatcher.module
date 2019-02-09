@@ -1,18 +1,7 @@
 <?php
 
 /**
- * Batcher Module v 1.0.4
  * Batch Editing and Creating of Pages in the ProcessWire Admin Panel
- *
- * @author Stefan Wanzenried (Wanze)
- * @copyright Stefan Wanzenried
- *
- * ProcessWire 2.x
- * Copyright (C) 2011 by Ryan Cramer
- * Licensed under GNU/GPL v2, see LICENSE.TXT
- *
- * http://www.processwire.com
- *
  */
 class ProcessBatcher extends Process implements Module
 {
@@ -53,7 +42,7 @@ class ProcessBatcher extends Process implements Module
             'title' => __('Batcher', __FILE__),
             'summary' => __('Batch Editing and Creating of Pages', __FILE__),
             'author' => 'Wanze',
-            'version' => 104,
+            'version' => 110,
             'href' => 'http://processwire.com/talk/topic/2811-processbatcher/',
             'permanent' => false,
             'permission' => 'batcher',
